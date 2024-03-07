@@ -15,7 +15,7 @@ def cookie_to_json(cookie_data: str) -> str:
     json_bytes = base64.b64decode(base64_bytes, altchars=b'-_')
     return json_bytes.decode()
 
-def get_sighed_document(data, base_url):
+def get_signed_document(data, base_url):
     """Obtain a signed message from the server."""
     try:
         response = requests.get(f'{base_url}/sign_random_document_for_students/{data}')
@@ -69,12 +69,12 @@ def main():
         return
 
     n_bytes = math.ceil(int.bit_length(N)/8)
-    encoded_message1 = message1_int.to_bytes(n_bytes, 'bit')
-    encoded_message2 = message2_int.to_bytes(n_bytes, 'bit')
+    encoded_message1 = message1_int.to_bytes(n_bytes, 'big')
+    encoded_message2 = message2_int.to_bytes(n_bytes, 'big')
 
     # Obtain signatures for both the original and modified messages
     signature1 = get_signed_document(encoded_message1.hex(), base_ur1).get('signature')
-    signature2 = get_signed_document(encoded_message1.hex(), base_ur1).get('signature')
+    signature2 = get_signed_document(encoded_message2.hex(), base_ur1).get('signature')
 
     if not signature1 or not signature2:
         print("Failed to obtain signatures for both messages.")
@@ -85,6 +85,9 @@ def main():
 
     # Craft a JSON object with the forged signature
     forged_json_data = json.dumps({'msg': encoded_original_message.hex(), 'signature': forged_signature.hex()})
+
+    # Encod JSON data into a cookie-friendly format
+    forged_cookie_data = json_to_cookie(forged_json_data)
 
     # Send the forged cookie to the server using /grade instead of /quote
     response = requests.get(f'{base_ur1}/grade/', cookies={'grade': forged_cookie_data})

@@ -1,0 +1,38 @@
+import math
+import requests
+import json
+import base64
+
+base_url = 'https://cbc-rsa.syssec.dk:8001/'
+#base_url = 'http://localhost:5000/'
+
+pk_resp = requests.get(base_url + 'pk/')
+pk_body = pk_resp.json()
+pk_N, pk_e = pk_body['N'], pk_body['e']
+
+original_resp = requests.get(base_url + 'grade/')
+original_grade = original_resp.cookies.get('grade')
+original_data = json.loads(base64.b64decode(original_grade))
+
+msg_original = int.from_bytes(bytes.fromhex(original_data['msg']))
+sign_original = int.from_bytes(bytes.fromhex(original_data['signature']))
+
+want_b = b'You got a 12 because you are an excellent student! :)'
+want = int.from_bytes(want_b)
+forged = (msg_original * want) % pk_N
+forged_b = forged.to_bytes(math.ceil(forged.bit_length() / 8))
+
+sign_url = base_url + 'sign_random_document_for_students/' + forged_b.hex() + '/'
+sign_resp = requests.get(sign_url)
+sign_body = sign_resp.json()
+
+print(sign_body)
+sign_forged = int.from_bytes(bytes.fromhex(sign_body['signature']))
+sign_want = (sign_forged * pow(sign_original, -1, pk_N)) % pk_N
+print(sign_want)
+
+sign_want_b = sign_want.to_bytes(math.ceil(sign_want.bit_length() / 8))
+grade_json = json.dumps({'msg': want_b.hex(), 'signature': sign_want_b.hex()})
+grade_b64 = base64.b64encode(bytes(grade_json, encoding='ascii'))
+quote_resp = requests.get(base_url + 'quote/', cookies={'grade': grade_b64.decode()})
+print(quote_resp.text)

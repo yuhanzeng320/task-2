@@ -45,8 +45,6 @@ def multiply_signatures(signature1, signature2, N):
     return new_signature_int.to_bytes(math.ceil(int.bit_length(N) / 8), 'big')
 
 
-
-
 def main():
     base_ur1 = input("Enter the base URL:  ")
 
